@@ -47,26 +47,31 @@ class InscripcionesController {
 
 
     private function crearInscripcion() {
-        $usuarioId = decodificarToken(); // Obtener ID del usuario autenticado
-    
-        if (!$usuarioId) {
-            return $this->unauthorizedResponse(); // Devuelve 401 si el usuario no está autenticado
-        }
-    
+        // 1. Leer y decodificar el cuerpo de la petición (JSON -> array)
         $input = (array) json_decode(file_get_contents('php://input'), true);
     
-        // Agregar automáticamente el usuario autenticado al array de entrada
-        $input['usuario_id'] = $usuarioId;
+        // 2. Comprobar que el usuario está autenticado
+        if (!$this->usuarioId) {
+            return $this->unprocessableEntityResponse();
+        }
     
+        // 3. Añadir el usuario autenticado al array de entrada
+        $input['usuario_id'] = $this->usuarioId;
+    
+        // 4. Validar que los datos de la inscripción sean correctos
         if (!$this->validateInscripcion($input)) {
             return $this->unprocessableEntityResponse();
         }
     
+        // 5. Llamar al modelo para crear la inscripción
         $this->model->set($input);
+    
+        // 6. Devolver la respuesta de éxito
         $response['status_code_header'] = 'HTTP/1.1 201 Created';
         $response['body'] = json_encode(['mensaje' => 'Inscripción creada exitosamente']);
         return $response;
     }
+    
     
 
     private function eliminarInscripcion($id) {
@@ -86,24 +91,21 @@ class InscripcionesController {
     }
 
     private function validateInscripcion($input) {
+        // Comprobar que existan todos los campos requeridos
         if (
+            empty($input['usuario_id']) ||
             empty($input['nombre_solicitante']) ||
             empty($input['telefono']) ||
             empty($input['correo_electronico']) ||
             empty($input['actividad_id']) ||
+            empty($input['fecha_inscripcion']) ||
             empty($input['estado'])
         ) {
             return false;
         }
-    
-        // Validación adicional para el estado (opcional)
-        $estadosPermitidos = ['Aceptada', 'Lista de espera', 'Rechazada'];
-        if (!in_array($input['estado'], $estadosPermitidos)) {
-            return false;
-        }
-    
         return true;
     }
+    
     
     private function unprocessableEntityResponse() {
         $response['status_code_header'] = 'HTTP/1.1 422 Unprocessable Entity';

@@ -27,7 +27,7 @@ class Inscripciones extends DBAbstractModel {
     // Método para crear una nueva inscripción
     public function set($sh_data = []) {
         // Validar que todos los campos necesarios estén presentes
-        if (empty($sh_data['nombre_solicitante']) || empty($sh_data['telefono']) || empty($sh_data['correo_electronico']) || empty($sh_data['actividad_id']) || empty($sh_data['estado'])) {
+/*         if (empty($sh_data['nombre_solicitante']) || empty($sh_data['telefono']) || empty($sh_data['correo_electronico']) || empty($sh_data['actividad_id']) || empty($sh_data['estado'])) {
             $this->mensaje = "Faltan datos para crear la inscripción";
             return false;
         }
@@ -35,14 +35,15 @@ class Inscripciones extends DBAbstractModel {
         // Asignar valores a las variables de la clase
         foreach ($sh_data as $campo => $valor) {
             $$campo = $valor;
-        }
+        } */
     
         // Consulta SQL para insertar una nueva inscripción
-        $this->query = "INSERT INTO inscripciones (nombre_solicitante, telefono, correo_electronico, actividad_id, fecha_inscripcion, estado)
-                        VALUES (:nombre_solicitante, :telefono, :correo_electronico, :actividad_id, :fecha_inscripcion, :estado)";
+        $this->query = "INSERT INTO inscripciones (usuario_id, nombre_solicitante, telefono, correo_electronico, actividad_id, fecha_inscripcion, estado)
+                        VALUES (:usuario_id, :nombre_solicitante, :telefono, :correo_electronico, :actividad_id, :fecha_inscripcion, :estado)";
     
         // Asignar parámetros a la consulta
         $this->parametros = [
+            ':usuario_id' => $sh_data['usuario_id'],
             ':nombre_solicitante' => $sh_data['nombre_solicitante'],
             ':telefono' => $sh_data['telefono'],
             ':correo_electronico' => $sh_data['correo_electronico'],
@@ -64,10 +65,12 @@ class Inscripciones extends DBAbstractModel {
 
     // Método para eliminar una inscripción
     public function delete($id = '') {
-        if ($id != '') {
+        if ($id !== '') {
             $this->query = "DELETE FROM inscripciones WHERE id = :id";
-            $this->parametros['id'] = (int)$id;
-
+    
+            // Asignar el valor al placeholder :id
+            $this->parametros = [":id" => (int)$id];
+    
             $this->get_results_from_query();
             $this->mensaje = "Inscripción eliminada exitosamente";
             return true;
@@ -76,4 +79,5 @@ class Inscripciones extends DBAbstractModel {
             return false;
         }
     }
+    
 }

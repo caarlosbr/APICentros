@@ -1,6 +1,7 @@
 <?php
 // Cargar archivos y dependencias necesarias
 require "../bootstrap.php";
+require "../app/Functions/codificarToken.php"; // Incluir el archivo que contiene la función decodificarToken
 
 use App\Core\Router;
 use App\Controllers\CentrosCivicosController;
@@ -11,6 +12,7 @@ use App\Controllers\InscripcionesController;
 use App\Controllers\UsuariosController;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+
 
 // Configuración de cabeceras para permitir solicitudes desde cualquier origen (CORS)
 header('Access-Control-Allow-Origin: *');
@@ -27,31 +29,6 @@ if ($method == "OPTIONS") {
 // Debug: Mostrar método HTTP y URL solicitada (útil para depuración)
 /* var_dump("Método HTTP:", $_SERVER['REQUEST_METHOD']);
 var_dump("URL solicitada:", $_SERVER['REQUEST_URI']); */
-
-/**
- * Función para decodificar el token JWT y obtener el ID del usuario autenticado.
- * Devuelve el ID del usuario o NULL si el token es inválido o no está presente.
- */
-function decodificarToken() {
-    if (!isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        return null;
-    }
-
-    $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-    $arr = explode(" ", $authHeader);
-    $jwt = $arr[1] ?? null;
-
-    if (!$jwt) {
-        return null;
-    }
-
-    try {
-        $decoded = JWT::decode($jwt, new Key(KEY, 'HS256'));
-        return $decoded->sub; // Se asume que el ID del usuario está en 'sub'
-    } catch (Exception $e) {
-        return null;
-    }
-}
 
 // Obtener la URI solicitada y dividirla en segmentos
 $requestMethod = $_SERVER['REQUEST_METHOD'];
@@ -159,17 +136,17 @@ $router->add([
 // Rutas de Inscripciones (Requiere autenticación)
 $router->add([
     'name' => 'crear-inscripcion',
-    'path' => '/^\/api\/reservas$/',
+    'path' => '/^\/api\/inscripciones$/',
     'action' => InscripcionesController::class,
     'perfil' => "Usuario"
 ]);
 
 $router->add([
     'name' => 'eliminar-inscripcion',
-    'path' => '/^\/api\/reservas\/[0-9]+$/',
+    'path' => '/^\/api\/inscripciones\/[0-9]+$/',
     'action' => InscripcionesController::class,
     'perfil' => "Usuario"
-]);
+]); 
 
 /**
  * Buscar la ruta coincidente en el enrutador.
@@ -179,34 +156,61 @@ $route = $router->match($request);
 $usuarioId = null;
 
 if ($route) {
-    // Si la ruta requiere autenticación, verificar el token
-    if (isset($route['perfil']) && $route['perfil'] === "Usuario") {
-        $usuarioId = decodificarToken();
-
-        var_dump($usuarioId);
-        // Si no hay usuario autenticado, devolver un error 401
-        if (!$usuarioId) {
-            header('HTTP/1.1 401 Unauthorized');
-            echo json_encode(['mensaje' => 'No autorizado']);
-            die();
-        }
-
-        // Si la URL contiene un ID de recurso, verificar que el usuario autenticado coincide con el recurso solicitado
-        if ($recursoId !== null && $usuarioId !== $recursoId) {
-            var_dump("Comparando usuarioId:", $usuarioId, "con recursoId:", $recursoId); // DEBUG
-            header('HTTP/1.1 403 Forbidden');
-            echo json_encode(['mensaje' => 'Acceso prohibido. No puedes acceder a este recurso.']);
-            die();
-        }
-    }
-
-    // Determinar el parámetro a enviar al controlador: si es ruta autenticada, se pasa el usuario; de lo contrario, el ID del recurso.
-    $param = (isset($route['perfil']) && $route['perfil'] === "Usuario") ? $usuarioId : $recursoId;
+    if ($route) {
+        // Nombre de la clase controladora que maneja esta ruta
+        $controllerName = $route['action'];
+        
+        // Si la ruta requiere autenticación (perfil "Usuario"), verificamos el token
+        if (isset($route['perfil']) && $route['perfil'] === "Usuario") {
+            // Obtenemos el ID de usuario desde el token JWT
+            $usuarioId = decodificarToken();
+            // var_dump($usuarioId); // (Opcional) para depuración
     
-    // Instanciar el controlador correspondiente a la ruta encontrada
-    $controllerName = $route['action'];
-    $controller = new $controllerName($requestMethod, $param);
+            // Si no hay usuario autenticado (token inválido o ausente), devolvemos un 401 (No autorizado)
+            if (!$usuarioId) {
+                header('HTTP/1.1 401 Unauthorized');
+                echo json_encode(['mensaje' => 'No autorizado']);
+                die();
+            }
+    
+            /* 
+             * SOLO si la ruta es de tipo /api/user/{id} (por ejemplo, get-user, update-user o delete-user),
+             * se compara $usuarioId con $recursoId para asegurar que el usuario solo pueda acceder a
+             * sus propios datos.
+             *
+             * in_array($route['name'], ['get-user','update-user','delete-user']) significa que
+             * el nombre de la ruta debe coincidir con uno de esos tres, es decir, estamos
+             * comprobando si efectivamente es una operación sobre un "usuario" concreto.
+             */
+            if (in_array($route['name'], ['get-user','update-user','delete-user'])) {
+                // Si se especifica un $recursoId en la URL y no coincide con el usuario autenticado, error 403
+                if ($recursoId !== null && $usuarioId !== $recursoId) {
+                    header('HTTP/1.1 403 Forbidden');
+                    echo json_encode(['mensaje' => 'Acceso prohibido.']);
+                    die();
+                }
+            }
+    
+            // Rutas autenticadas: invocamos el controlador con TRES parámetros (method, recursoId, usuarioId)
+            $controller = new $controllerName($requestMethod, $recursoId, $usuarioId);
+        } else {
+            // Rutas públicas: no necesitan el ID de usuario, así que usamos DOS parámetros (method, recursoId)
+            $controller = new $controllerName($requestMethod, $recursoId);
+        }
+    
+        // Aquí se llama al método principal del controlador que procesa la petición
+        $controller->processRequest();
+    
+    } else {
+        // Si la ruta no coincide con ninguna definida, devolvemos 404
+        header('HTTP/1.1 404 Not Found');
+        echo json_encode(['mensaje' => 'Recurso no encontrado']);
+    }
+    
+
+    // Procesar la solicitud
     $controller->processRequest();
+
 } else {
     // Si la ruta no coincide con ninguna definida, devolver error 404
     header('HTTP/1.1 404 Not Found');

@@ -23,72 +23,57 @@ class Reservas extends DBAbstractModel {
     }
 
     // Obtener una reserva por usuario_id o todas las reservas
-    public function get($usuario_id = '') {
-        if ($usuario_id != '') {
-            // Consulta para obtener reservas de un usuario específico
-            $this->query = "SELECT reservas.id, reservas.fecha_reserva, actividades.nombre AS actividad, actividades.descripcion
-                            FROM reservas
-                            INNER JOIN actividades ON reservas.actividad_id = actividades.id
-                            WHERE reservas.usuario_id = :usuario_id";
-            $this->parametros = [":usuario_id" => (int)$usuario_id];
-            $this->get_results_from_query();
-        } else {
-            // Consulta para obtener todas las reservas
-            $this->query = "SELECT * FROM reservas";
-            $this->parametros = [];
-            $this->get_results_from_query();
-        }
-
-        if (!empty($this->rows)) {
-            if ($usuario_id != '') {
-                $this->mensaje = "Reservas del usuario encontradas";
-                return $this->rows;
-            } else {
-                $this->mensaje = "Reservas encontradas";
-                return $this->rows;
-            }
-        } else {
-            $this->mensaje = $usuario_id ? "No se encontraron reservas para este usuario" : "No se encontraron reservas";
+    public function get($usuario_id = "") {
+        if (empty($usuario_id)) {
+            $this->mensaje = "Falta el ID del usuario";
             return null;
         }
+
+        // var_dump($usuario_id);
+
+        $this->query = "SELECT * FROM reservas WHERE usuario_id = :usuario_id";
+        $this->parametros = [":usuario_id" => (int)$usuario_id];
+        $this->get_results_from_query();
+
+        if (!empty($this->rows)) {
+            $this->mensaje = "Reservas encontradas";
+            return $this->rows;
+        } else {
+            $this->mensaje = "No se encontraron reservas";
+            return null;
+        }
+        
     }
+    
 
     // Crear una nueva reserva
-    public function set($data = []) {
-        if (empty($data['nombre_solicitante']) || empty($data['telefono']) || 
-            empty($data['correo_electronico']) || empty($data['instalacion_id']) || 
-            empty($data['fecha_inicio']) || empty($data['fecha_final']) || 
-            empty($data['estado'])) {
-            $this->mensaje = "Faltan datos para crear la reserva";
-            return false;
-        }
+    public function set($input = array()) {
+        $this->query = "INSERT INTO reservas (
+            usuario_id, nombre_solicitante, telefono, correo_electronico, instalacion_id, fecha_inicio, fecha_final, estado
+        ) VALUES (
+            :usuario_id, :nombre_solicitante, :telefono, :correo_electronico, :instalacion_id, :fecha_inicio, :fecha_final, :estado
+        )";
     
-        // Preparar la consulta
-        $this->query = "INSERT INTO reservas (nombre_solicitante, telefono, correo_electronico, instalacion_id, fecha_inicio, fecha_final, estado) 
-                        VALUES (:nombre_solicitante, :telefono, :correo_electronico, :instalacion_id, :fecha_inicio, :fecha_final, :estado)";
-    
-        // Asignar valores a los parámetros
         $this->parametros = [
-            ":nombre_solicitante" => $data['nombre_solicitante'],
-            ":telefono" => $data['telefono'],
-            ":correo_electronico" => $data['correo_electronico'],
-            ":instalacion_id" => (int) $data['instalacion_id'],
-            ":fecha_inicio" => $data['fecha_inicio'],
-            ":fecha_final" => $data['fecha_final'],
-            ":estado" => $data['estado']
+            ':usuario_id' => $input['usuario_id'],
+            ':nombre_solicitante' => $input['nombre_solicitante'],
+            ':telefono' => $input['telefono'],
+            ':correo_electronico' => $input['correo_electronico'],
+            ':instalacion_id' => $input['instalacion_id'],
+            ':fecha_inicio' => $input['fecha_inicio'],
+            ':fecha_final' => $input['fecha_final'],
+            ':estado' => $input['estado']
         ];
     
-        // Ejecutar la consulta
-        $this->get_results_from_query();
+        // Depuración: Imprimir la consulta y los parámetros
+/*         var_dump($this->query);
+        var_dump($this->parametros); */
     
-        if ($this->conn->lastInsertId()) {
-            $this->mensaje = "Reserva creada exitosamente";
-            return true;
-        } else {
-            $this->mensaje = "Error al crear la reserva";
-            return false;
-        }
+        $this->get_results_from_query();
+        $this->mensaje = 'Reserva creada';
+        return $this->rows;
     }
+    
     
     // Método de edición vacío, ya que no se utiliza para reservas
     public function edit() {}
@@ -108,4 +93,17 @@ class Reservas extends DBAbstractModel {
         $this->mensaje = "Reserva eliminada exitosamente";
         return true;
     }
+
+    public function getById($id) {
+        if (empty($id)) {
+            return null;
+        }
+    
+        $this->query = "SELECT * FROM reservas WHERE id = :id";
+        $this->parametros = [":id" => (int)$id];
+        $this->get_results_from_query();
+    
+        return $this->rows[0] ?? null;
+    }
+    
 }

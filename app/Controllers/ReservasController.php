@@ -48,23 +48,29 @@ use App\Models\Reservas;
         }
     }
 
-    private function getReservas() {
-        if ($this->usuarioId) {
-            // Obtener reservas por usuario
-            $result = $this->model->get($this->usuarioId);
-        } else {
-            // Obtener todas las reservas
-            $result = $this->model->get();
-        }
+    
 
+    private function getReservas() {
+        // var_dump("Dentro de getReservas:");
+        if ($this->reservaId) {
+            // Obtener reserva concreta por $this->reservaId
+            $result = $this->model->getById($this->reservaId);
+        } elseif ($this->usuarioId) {
+            // Obtener reservas del usuario
+            $result = $this->model->get($this->usuarioId);
+        }
+    
+       // var_dump($this->usuarioId); // para depurar
+    
         if (!$result) {
             return $this->notFoundResponse();
         }
-
+    
         $response['status_code_header'] = 'HTTP/1.1 200 OK';
         $response['body'] = json_encode($result);
         return $response;
     }
+    
 
     private function crearReserva() {
         $input = (array) json_decode(file_get_contents('php://input'), true);
@@ -93,26 +99,30 @@ use App\Models\Reservas;
     
 
     private function eliminarReserva($id) {
-
-        // Asegurar que la reserva esté vinculada al usuario autenticado, o que se haya enviado un ID
         if (empty($id) || !$this->usuarioId) {
             return $this->unprocessableEntityResponse();
         }
-
+    
+        // Obtener la reserva antes de eliminar
         $result = $this->model->getById($id);
-
-        // Verificar que la reserva exista y esté vinculada al usuario autenticado
-        if (!$result || $result['usuario_id'] !== $this->usuarioId) {
-            return $this->notFoundResponse();
+    
+        if (!$result) {
+            return $this->notFoundResponse(); // La reserva no existe
         }
-
-        // Llamar al modelo para eliminar la reserva
+    
+        // Verificar que el usuario autenticado es el dueño de la reserva
+        if ($result['usuario_id'] !== $this->usuarioId) {
+            return $this->unprocessableEntityResponse();
+        }
+    
+        // Eliminar la reserva
         $this->model->delete($id);
-
+    
         $response['status_code_header'] = 'HTTP/1.1 200 OK';
         $response['body'] = json_encode(['mensaje' => 'Reserva eliminada exitosamente']);
         return $response;
     }
+    
 
     private function validateReserva($input) {
         return isset($input['nombre_solicitante']) &&
