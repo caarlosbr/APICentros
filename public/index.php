@@ -15,14 +15,17 @@ use Firebase\JWT\Key;
 
 
 // Configuración de cabeceras para permitir solicitudes desde cualquier origen (CORS)
-header('Access-Control-Allow-Origin: *');
+header("Access-Control-Allow-Origin: http://192.168.0.106:3000");
 header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
 header("Allow: GET, POST, OPTIONS, PUT, DELETE");
+header("Access-Control-Allow-Credentials: true");
+
 
 // Manejo de solicitudes HTTP OPTIONS (usado en CORS para preflight requests)
 $method = $_SERVER['REQUEST_METHOD'];
 if ($method == "OPTIONS") {
+    header('HTTP/1.1 200 OK');
     die(); // Termina la ejecución si es una solicitud de tipo OPTIONS
 }
 
@@ -68,27 +71,12 @@ $router->add([
 
 // Obtener información del usuario autenticado (autenticado)
 $router->add([
-    'name' => 'get-user',
+    'name' => 'user',
     'path' => '/^\/api\/user$/',
     'action' => UsuariosController::class,
     'perfil' => "Usuario"
 ]);
 
-// Actualizar usuario (autenticado)
-$router->add([
-    'name' => 'update-user',
-    'path' => '/^\/api\/user$/',
-    'action' => UsuariosController::class,
-    'perfil' => "Usuario"
-]);
-
-// Eliminar usuario (autenticado)
-$router->add([
-    'name' => 'delete-user',
-    'path' => '/^\/api\/user$/',
-    'action' => UsuariosController::class,
-    'perfil' => "Usuario"
-]);
 
 
 // Rutas de Centros Cívicos 
@@ -96,8 +84,7 @@ $router->add([
     'name' => 'centros',
     'path' => '/^\/api\/centros(\/[0-9]+)?$/',
     'action' => CentrosCivicosController::class,
-/*     'perfil' => "Usuario" // Indica que esta ruta requiere autenticación
- */]);
+]);
 
 // Rutas de Instalaciones
 $router->add([
@@ -148,71 +135,38 @@ $router->add([
     'perfil' => "Usuario"
 ]); 
 
-/**
- * Buscar la ruta coincidente en el enrutador.
- * Si la ruta existe, se procesa la solicitud. Si no, se devuelve un error 404.
- */
+// Buscar la ruta que coincide con la solicitud
 $route = $router->match($request);
-$usuarioId = null;
+$usuarioId = null; 
 
 if ($route) {
-    if ($route) {
-        // Nombre de la clase controladora que maneja esta ruta
-        $controllerName = $route['action'];
-        
-        // Si la ruta requiere autenticación (perfil "Usuario"), verificamos el token
-        if (isset($route['perfil']) && $route['perfil'] === "Usuario") {
-            // Obtenemos el ID de usuario desde el token JWT
-            $usuarioId = decodificarToken();
-            // var_dump($usuarioId); // (Opcional) para depuración
+    // Nombre de la clase controladora que maneja esta ruta
+    $controllerName = $route['action'];
     
-            // Si no hay usuario autenticado (token inválido o ausente), devolvemos un 401 (No autorizado)
-            if (!$usuarioId) {
-                header('HTTP/1.1 401 Unauthorized');
-                echo json_encode(['mensaje' => 'No autorizado']);
-                die();
-            }
-    
-            /* 
-             * SOLO si la ruta es de tipo /api/user/{id} (por ejemplo, get-user, update-user o delete-user),
-             * se compara $usuarioId con $recursoId para asegurar que el usuario solo pueda acceder a
-             * sus propios datos.
-             *
-             * in_array($route['name'], ['get-user','update-user','delete-user']) significa que
-             * el nombre de la ruta debe coincidir con uno de esos tres, es decir, estamos
-             * comprobando si efectivamente es una operación sobre un "usuario" concreto.
-             */
-            if (in_array($route['name'], ['get-user','update-user','delete-user'])) {
-                // Si se especifica un $recursoId en la URL y no coincide con el usuario autenticado, error 403
-                if ($recursoId !== null && $usuarioId !== $recursoId) {
-                    header('HTTP/1.1 403 Forbidden');
-                    echo json_encode(['mensaje' => 'Acceso prohibido.']);
-                    die();
-                }
-            }
-    
-            // Rutas autenticadas: invocamos el controlador con TRES parámetros (method, recursoId, usuarioId)
-            $controller = new $controllerName($requestMethod, $recursoId, $usuarioId);
-        } else {
-            // Rutas públicas: no necesitan el ID de usuario, así que usamos DOS parámetros (method, recursoId)
-            $controller = new $controllerName($requestMethod, $recursoId);
-        }
-    
-        // Aquí se llama al método principal del controlador que procesa la petición
-        $controller->processRequest();
-    
-    } else {
-        // Si la ruta no coincide con ninguna definida, devolvemos 404
-        header('HTTP/1.1 404 Not Found');
-        echo json_encode(['mensaje' => 'Recurso no encontrado']);
-    }
-    
+    // Si la ruta requiere autenticación (perfil "Usuario"), verificamos el token
+    if (isset($route['perfil']) && $route['perfil'] === "Usuario") {
+        // Obtenemos el ID de usuario desde el token JWT
+        $usuarioId = decodificarToken();
 
-    // Procesar la solicitud
+        // Si no hay usuario autenticado (token inválido o ausente), devolvemos un 401
+        if (!$usuarioId) {
+            header('HTTP/1.1 401 Unauthorized');
+            echo json_encode(['mensaje' => 'No autorizado']);
+            die();
+        }
+
+        // Instanciamos el controlador con tres parámetros
+        $controller = new $controllerName($requestMethod, $recursoId, $usuarioId); // Pasar el ID de usuario al controlador, para rutas protegidas, para que pueda acceder a la ID del usuario
+    } else {
+        // Ruta pública: no necesita ID de usuario
+        $controller = new $controllerName($requestMethod, $recursoId);
+    }
+
+    // Procesar la solicitud en el controlador
     $controller->processRequest();
 
 } else {
-    // Si la ruta no coincide con ninguna definida, devolver error 404
+    // Si la ruta no coincide con ninguna definida, devolvemos 404
     header('HTTP/1.1 404 Not Found');
     echo json_encode(['mensaje' => 'Recurso no encontrado']);
 }

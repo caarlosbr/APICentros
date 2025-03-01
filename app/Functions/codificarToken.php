@@ -3,8 +3,8 @@
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-if (!function_exists('decodificarToken')) {
-    function decodificarToken() {
+/* if (!function_exists('decodificarToken')) {
+ */    function decodificarToken() {
         // Verificar si el token JWT está presente
         if (!isset($_SERVER['HTTP_AUTHORIZATION'])) {
             return null;
@@ -24,10 +24,10 @@ if (!function_exists('decodificarToken')) {
 /*             var_dump($decoded); // DEBUG          
  */            // Ajustar el acceso a las propiedades según la estructura real del objeto decodificado
             $idUser = $decoded->sub; // Asumiendo que la ID del usuario está en el campo 'sub'
-            var_dump($idUser); // DEBUG
+            /* var_dump($idUser); */ // DEBUG
             return $idUser; // Retornar la ID del usuario
         } catch (Exception $e) { // Capturar cualquier excepción
             return null;
         }
-    }
+    //}
 }
