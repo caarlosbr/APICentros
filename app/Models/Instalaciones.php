@@ -58,63 +58,15 @@ class Instalaciones extends DBAbstractModel
     // Crear una nueva instalación
     public function set($data = [])
     {
-        if (empty($data['nombre']) || empty($data['centro_id']) || empty($data['tipo']) || empty($data['capacidad'])) {
-            $this->mensaje = "Faltan datos para registrar la instalación";
-            return false;
-        }
-
-        $this->query = "INSERT INTO instalaciones (nombre, centro_id, tipo, capacidad, created_at) 
-                        VALUES (:nombre, :centro_id, :tipo, :capacidad, :created_at)";
-        $this->parametros = [
-            ":nombre" => $data['nombre'],
-            ":centro_id" => (int)$data['centro_id'],
-            ":tipo" => $data['tipo'],
-            ":capacidad" => $data['capacidad'],
-            ":created_at" => date('Y-m-d H:i:s')
-        ];
-
-        $this->get_results_from_query();
-        $this->mensaje = "Instalación registrada exitosamente";
-        return true;
     }
 
     // Actualizar una instalación
     public function edit($data = [])
     {
-        if (empty($data['id']) || empty($data['nombre']) || empty($data['centro_id']) || empty($data['tipo']) || empty($data['capacidad'])) {
-            $this->mensaje = 'Faltan datos para la actualización de la instalación';
-            return false;
-        }
-
-        $this->query = "UPDATE instalaciones 
-                        SET nombre = :nombre, centro_id = :centro_id, tipo = :tipo, capacidad = :capacidad 
-                        WHERE id = :id";
-        $this->parametros = [
-            ":id" => (int)$data['id'],
-            ":nombre" => $data['nombre'],
-            ":centro_id" => (int)$data['centro_id'],
-            ":tipo" => $data['tipo'],
-            ":capacidad" => $data['capacidad']
-        ];
-
-        $this->get_results_from_query();
-        $this->mensaje = "Instalación actualizada exitosamente";
-        return true;
     }
 
     // Eliminar una instalación
     public function delete($id = '')
     {
-        if (empty($id)) {
-            $this->mensaje = "Falta el ID de la instalación para eliminar";
-            return false;
-        }
-
-        $this->query = "DELETE FROM instalaciones WHERE id = :id";
-        $this->parametros[":id"] = (int)$id;
-
-        $this->get_results_from_query();
-        $this->mensaje = "Instalación eliminada exitosamente";
-        return true;
     }
 }

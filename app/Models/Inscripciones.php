@@ -22,7 +22,25 @@ class Inscripciones extends DBAbstractModel {
         trigger_error('La clonación de este objeto no está permitida', E_USER_ERROR);
     }
 
-    public function get(){}
+    public function get($usuario_id = "") {
+        if (empty($usuario_id)) {
+            $this->mensaje = "Falta el ID del usuario";
+            return null;
+        }
+
+        $this->query = "SELECT * FROM inscripciones WHERE usuario_id = :usuario_id";
+        $this->parametros = [":usuario_id" => (int)$usuario_id];
+        $this->get_results_from_query();
+
+        if (!empty($this->rows)) {
+            $this->mensaje = "Inscripciones encontradas";
+            return $this->rows;
+        } else {
+            $this->mensaje = "No se encontraron inscripciones";
+            return null;
+        }
+
+    }
 
     // Método para crear una nueva inscripción
     public function set($sh_data = []) {

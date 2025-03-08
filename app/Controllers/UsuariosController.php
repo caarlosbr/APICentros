@@ -99,7 +99,7 @@ class UsuariosController
             return $this->unprocessableEntityResponse();
         }
 
-        // Intenta iniciar sesión y obtener el token
+        // iniciar sesión y obtener el token
         $token = $this->model->login($input['email'], $input['password']);
 
         // Si las credenciales son incorrectas, retorna un error
@@ -177,7 +177,7 @@ class UsuariosController
         }
 
         // Llama al modelo para actualizar el usuario con la nueva información
-        $this->model->edit($input);
+        $this->model->edit($this->usuarioId,$input);
         $response['status_code_header'] = 'HTTP/1.1 200 OK';
         $response['body'] = json_encode(['mensaje' => 'Usuario actualizado correctamente']);
         return $response;

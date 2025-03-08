@@ -125,34 +125,21 @@ class Usuarios extends DBAbstractModel
     }
 
     // Método para actualizar la información de un usuario (UPDATE)
-    public function edit($sh_data = array())
+    public function edit($id= "", $sh_data = array())
     {
-        // Verifica que se proporcionen todos los datos necesarios para la actualización
-/*         if (empty($sh_data['id']) || empty($sh_data['nombre']) || empty($sh_data['password']) || empty($sh_data['email'])) {
-            $this->mensaje = 'Faltan datos para la actualización';
-            return;
-        } */
-
-        // Se mapean los datos (la línea foreach asigna cada dato a una variable con su mismo nombre)
-        foreach ($sh_data as $campo => $valor) {
-            $$campo = $valor;
-        }
-
-        // Define la consulta SQL para actualizar el usuario
-        $this->query = "UPDATE usuarios SET nombre = :nombre, email = :email, password = :password WHERE id = :id";
-
-        // Mapea los parámetros para la consulta
-        $this->parametros[":nombre"] = $sh_data["nombre"];
-        $this->parametros[":email"] = $sh_data["email"];
-        $this->parametros[":password"] = $sh_data["password"];
-        $this->parametros[":id"] = $sh_data["id"];
-
-        // Ejecuta la consulta
+        // "nombre", "email", "password" vienen en $sh_data
+        $this->query = "UPDATE usuarios
+                        SET nombre = :nombre,email = :email,password = :password WHERE id = :id";
+    
+        $this->parametros[':nombre']   = $sh_data['nombre'];
+        $this->parametros[':email']    = $sh_data['email'];
+        $this->parametros[':password'] = $sh_data['password'];
+        $this->parametros[':id']       = $id; // El ID viene como primer argumento
+    
         $this->get_results_from_query();
-
-        // Mensaje de éxito
         $this->mensaje = "Usuario actualizado exitosamente";
     }
+    
 
     // Método para eliminar un usuario (DELETE)
     public function delete($id = null)

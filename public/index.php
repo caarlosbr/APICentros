@@ -10,12 +10,12 @@ use App\Controllers\ActividadesController;
 use App\Controllers\ReservasController;
 use App\Controllers\InscripcionesController;
 use App\Controllers\UsuariosController;
-use Firebase\JWT\JWT;
+/* use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
-
+ */
 
 // Configuración de cabeceras para permitir solicitudes desde cualquier origen (CORS)
-header("Access-Control-Allow-Origin: http://192.168.0.106:3000");
+header("Access-Control-Allow-Origin: http://192.168.1.107:3000");
 header("Access-Control-Allow-Headers: X-API-KEY, Origin, X-Requested-With, Content-Type, Accept, Access-Control-Request-Method, Authorization");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS, PUT, DELETE");
 header("Allow: GET, POST, OPTIONS, PUT, DELETE");
@@ -35,7 +35,9 @@ var_dump("URL solicitada:", $_SERVER['REQUEST_URI']); */
 
 // Obtener la URI solicitada y dividirla en segmentos
 $requestMethod = $_SERVER['REQUEST_METHOD'];
-$request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// $_SERVER['REQUEST_URI'] contiene la URL solicitada, por ejemplo: /api/centros/2, es decir se queda con la parte de la ruta y de la consulta
+$request = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); // Si la url por ejemplo es http://centros.civivos.local/api/instalaciones/2, $request valdria /api/instalaciones/2 sin filtros
+// Con PHP_URL_PATH se obtiene la parte de la ruta de la URL, sin filtros
 $uri = explode('/', $request);
 
 // Obtener el ID del recurso (si está presente en la URL)
@@ -140,7 +142,7 @@ $route = $router->match($request);
 $usuarioId = null; 
 
 if ($route) {
-    // Nombre de la clase controladora que maneja esta ruta
+    // Nombre del ontrolador que maneja esta ruta
     $controllerName = $route['action'];
     
     // Si la ruta requiere autenticación (perfil "Usuario"), verificamos el token

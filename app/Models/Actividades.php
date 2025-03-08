@@ -32,47 +32,67 @@ class Actividades extends DBAbstractModel
     // Método para obtener una actividad o todas las actividades
     public function get($id = null, $filters = [])
     {
-        if ($id !== null) {
-            // Consulta para obtener una actividad específica
-            $this->query = "SELECT * FROM actividades WHERE id = :id";
-            $this->parametros = [":id" => (int)$id];
-        } elseif (!empty($filters)) {
-            // Construcción dinámica de la consulta con filtros
-            $this->query = "SELECT * FROM actividades WHERE 1=1";
+        // Empezamos asumiendo que no hay parámetros para la consulta.
+        $this->parametros = [];
     
+        // 1) Si se proporciona un ID, buscamos solo esa actividad.
+        if ($id !== null) {
+            // Construimos la consulta para buscar la actividad por su ID.
+            $this->query = "SELECT * FROM actividades WHERE id = :id";
+    
+            // Asignamos el valor de :id en el array de parámetros.
+            // (int)$id fuerza a convertir $id a entero.
+            $this->parametros = [":id" => (int)$id];
+    
+        } else {
+            // 2) Si no se pasa un ID, podemos aplicar filtros o devolver todas las actividades.
+    
+            // Empezamos la consulta con 'WHERE 1=1' para facilitar la concatenación de 'AND ...'.
+            $baseQuery = "SELECT * FROM actividades WHERE 1=1";
+    
+            // $conditions es un array que iremos llenando con cada filtro que encontremos.
+            $conditions = [];
+    
+            // Si el array $filters contiene 'centro_civico_id', añadimos esa condición.
             if (!empty($filters['centro_civico_id'])) {
-                $this->query .= " AND centro_civico_id = :centro_civico_id";
+                $conditions[] = "centro_civico_id = :centro_civico_id";
                 $this->parametros[':centro_civico_id'] = (int)$filters['centro_civico_id'];
             }
     
+            // Si hay un rango de fechas, añadimos las condiciones fecha_inicio y fecha_final.
             if (!empty($filters['fecha_inicio']) && !empty($filters['fecha_final'])) {
-                $this->query .= " AND fecha_inicio >= :fecha_inicio AND fecha_final <= :fecha_final";
+                $conditions[] = "fecha_inicio >= :fecha_inicio AND fecha_final <= :fecha_final";
                 $this->parametros[':fecha_inicio'] = $filters['fecha_inicio'];
-                $this->parametros[':fecha_final'] = $filters['fecha_final'];
+                $this->parametros[':fecha_final']  = $filters['fecha_final'];
             }
     
+            // Si existe un 'nombre' en los filtros, lo usamos con LIKE para coincidencias parciales.
             if (!empty($filters['nombre'])) {
-                $this->query .= " AND nombre LIKE :nombre";
+                $conditions[] = "nombre LIKE :nombre";
                 $this->parametros[':nombre'] = "%" . $filters['nombre'] . "%";
             }
     
+            // Si hay 'descripcion', también la filtramos con LIKE.
             if (!empty($filters['descripcion'])) {
-                $this->query .= " AND descripcion LIKE :descripcion";
+                $conditions[] = "descripcion LIKE :descripcion";
                 $this->parametros[':descripcion'] = "%" . $filters['descripcion'] . "%";
             }
     
+            // Si el usuario pasó 'plazas', añadimos la condición exacta para plazas.
             if (!empty($filters['plazas'])) {
-                $this->query .= " AND plazas = :plazas";
+                $conditions[] = "plazas = :plazas";
                 $this->parametros[':plazas'] = (int)$filters['plazas'];
             }
-        } else {
-            // Consulta para obtener todas las actividades
-            $this->query = "SELECT * FROM actividades";
-            $this->parametros = [];
+    
+            // Unimos la consulta base con las condiciones que haya.
+            // Si $conditions no está vacío, concatenamos ' AND ...'.
+            $this->query = $baseQuery . (count($conditions) > 0 ? " AND " . implode(" AND ", $conditions) : "");
         }
     
+        // 3) Ejecutamos la consulta final y guardamos los resultados en $this->rows.
         $this->get_results_from_query();
     
+        // 4) Retornamos los resultados si hay filas; de lo contrario, guardamos un mensaje y devolvemos null.
         if (!empty($this->rows)) {
             return $this->rows;
         } else {
@@ -85,68 +105,15 @@ class Actividades extends DBAbstractModel
     // Método para insertar una nueva actividad
     public function set($data = [])
     {
-        // Validar que los datos requeridos estén presentes
-        if (empty($data['centro_civico_id']) || empty($data['nombre']) || empty($data['descripcion']) || empty($data['fecha_inicio']) || empty($data['fecha_final']) || empty($data['horario']) || empty($data['plazas'])) {
-            $this->mensaje = "Faltan datos para registrar la actividad";
-            return false;
-        }
-
-        $this->query = "INSERT INTO actividades (centro_civico_id, nombre, descripcion, fecha_inicio, fecha_final, horario, plazas)
-                        VALUES (:centro_civico_id, :nombre, :descripcion, :fecha_inicio, :fecha_final, :horario, :plazas)";
-        $this->parametros = [
-            ":centro_civico_id" => $data['centro_civico_id'],
-            ":nombre" => $data['nombre'],
-            ":descripcion" => $data['descripcion'],
-            ":fecha_inicio" => $data['fecha_inicio'],
-            ":fecha_final" => $data['fecha_final'],
-            ":horario" => $data['horario'],
-            ":plazas" => $data['plazas']
-        ];
-
-        $this->get_results_from_query();
-        $this->mensaje = "Actividad registrada exitosamente";
-        return true;
     }
 
     // Método para actualizar una actividad
     public function edit($data = [])
     {
-        if (empty($data['id']) || empty($data['nombre']) || empty($data['descripcion']) || empty($data['fecha_inicio']) || empty($data['fecha_final']) || empty($data['horario']) || empty($data['plazas'])) {
-            $this->mensaje = "Faltan datos para actualizar la actividad";
-            return false;
-        }
-
-        $this->query = "UPDATE actividades
-                        SET nombre = :nombre, descripcion = :descripcion, fecha_inicio = :fecha_inicio, fecha_final = :fecha_final, horario = :horario, plazas = :plazas
-                        WHERE id = :id";
-        $this->parametros = [
-            ":id" => $data['id'],
-            ":nombre" => $data['nombre'],
-            ":descripcion" => $data['descripcion'],
-            ":fecha_inicio" => $data['fecha_inicio'],
-            ":fecha_final" => $data['fecha_final'],
-            ":horario" => $data['horario'],
-            ":plazas" => $data['plazas']
-        ];
-
-        $this->get_results_from_query();
-        $this->mensaje = "Actividad actualizada exitosamente";
-        return true;
     }
 
     // Método para eliminar una actividad
     public function delete($id = '')
     {
-        if (empty($id)) {
-            $this->mensaje = "Falta el ID de la actividad para eliminar";
-            return false;
-        }
-
-        $this->query = "DELETE FROM actividades WHERE id = :id";
-        $this->parametros = [":id" => $id];
-
-        $this->get_results_from_query();
-        $this->mensaje = "Actividad eliminada exitosamente";
-        return true;
     }
 }
